@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Circle Game</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-900 text-white flex">
+    <div class="container mx-auto flex">
+        <div id="game-container" class="w-3/4 relative">
+            <canvas id="gameCanvas" class="border-2 border-green-500"></canvas>
+        </div>
+        <div id="ranking" class="w-1/4 p-4 bg-gray-800">
+            <h2 class="text-xl font-bold mb-4">Ranking</h2>
+            <ul id="rankingList"></ul>
+        </div>
+    </div>
+
+    <script>
+    class CircleGame {
+        constructor() {
+            this.canvas = document.getElementById('gameCanvas');
+            this.ctx = this.canvas.getContext('2d');
+            this.players = {};
+            this.playerId = null;
+            this.mapWidth = 1000;
+            this.mapHeight = 1000;
+            this.ranking = [];
+
+            this.setupCanvas();
+            this.setupWebSocket();
+            this.setupControls();
+        }
+
+        setupCanvas() {
+            this.canvas.width = window.innerWidth * 0.75;
+            this.canvas.height = window.innerHeight;
+        }
+
+        setupWebSocket() {
+            this.socket = new WebSocket('ws://localhost:8765');
+            
+            this.socket.onmessage = (event) => {
+                const data = JSON.parse(event.data);
+                
+                if (data.type === 'init') {
+                    this.playerId = data.player_id;
+                    this.mapWidth = data.map_width;
+                    this.mapHeight = data.map_height;
+                }
+
+                if (data.players) {
+                    this.players = data.players;
+                    this.ranking = data.ranking;
+                    this.updateRanking();
+                    this.render();
+                }
+            };
+
+            this.socket.onclose = () => {
+                console.error('WebSocket connection closed');
+            };
+        }
+
+        setupControls() {
+            this.canvas.addEventListener('mousemove', (event) => {
+                if (!this.playerId) return;
+
+                const rect = this.canvas.getBoundingClientRect();
+                const x = event.clientX - rect.left;
+                const y = event.clientY - rect.top;
+
+                this.socket.send(JSON.stringify({
+                    type: 'move',
+                    x: (x / this.canvas.width) * this.mapWidth,
+                    y: (y / this.canvas.height) * this.mapHeight
+                }));
+            });
+        }
+
+        updateRanking() {
+            const rankingList = document.getElementById('rankingList');
+            rankingList.innerHTML = this.ranking.map((player, index) => 
+                `<li class="mb-2">
+                    <span class="font-bold">#${index + 1}</span> 
+                    ${player.id === this.playerId ? '👤' : ''} 
+                    Score: ${player.score}
+                </li>`
+            ).join('');
+        }
+
+        render() {
+            this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+
+            for (const [id, player] of Object.entries(this.players)) {
+                const x = (player.x / this.mapWidth) * this.canvas.width;
+                const y = (player.y / this.mapHeight) * this.canvas.height;
+                const radius = (player.radius / this.mapWidth) * this.canvas.width;
+
+                this.ctx.beginPath();
+                this.ctx.fillStyle = player.color;
+                this.ctx.arc(x, y, radius, 0, Math.PI * 2);
+                this.ctx.fill();
+
+                if (id === this.playerId) {
+                    this.ctx.strokeStyle = 'white';
+                    this.ctx.lineWidth = 3;
+                    this.ctx.stroke();
+                }
+            }
+        }
+    }
+
+    window.onload = () => {
+        new CircleGame();
+    };
+    </script>
+</body>
+</html>
