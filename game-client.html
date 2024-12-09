@@ -5,8 +5,67 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Circle Game</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        .modal-content {
+            background: #2d3748;
+            padding: 2rem;
+            border-radius: 0.5rem;
+            width: 90%;
+            max-width: 400px;
+        }
+
+        .respawn-message {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.8);
+            padding: 1rem;
+            border-radius: 0.5rem;
+            text-align: center;
+        }
+    </style>
 </head>
 <body class="bg-gray-900 text-white flex">
+    <div id="playerModal" class="modal-overlay">
+        <div class="modal-content">
+            <h2 class="text-xl font-bold mb-4">Bem-vindo ao Circle Game!</h2>
+            <div class="mb-4">
+                <label class="block mb-2">Seu nome:</label>
+                <input type="text" id="playerName" class="w-full p-2 text-black rounded">
+            </div>
+            <div class="mb-4">
+                <label class="block mb-2">Escolha sua cor:</label>
+                <input type="color" id="playerColor" class="w-full">
+            </div>
+            <button id="startGame" class="bg-green-500 px-4 py-2 rounded w-full">
+                Começar Jogo
+            </button>
+        </div>
+    </div>
+
+    <div id="respawnContainer" class="modal-overlay" style="display: none;">
+        <div class="modal-content">
+            <h2 class="text-xl font-bold mb-4">Você morreu!</h2>
+            <button id="respawnButton" class="bg-green-500 px-4 py-2 rounded w-full">
+                Renascer
+            </button>
+        </div>
+    </div>
+
     <div class="container mx-auto flex">
         <div id="game-container" class="w-3/4 relative">
             <canvas id="gameCanvas" class="border-2 border-green-500"></canvas>
@@ -27,10 +86,39 @@
             this.mapWidth = 1000;
             this.mapHeight = 1000;
             this.ranking = [];
+            this.playerName = '';
+            this.playerColor = '';
+            this.keys = {}; // Para armazenar as teclas pressionadas
+            
+            this.setupModal();
+            this.setupRespawnButton();
+        }
 
+        setupModal() {
+            const modal = document.getElementById('playerModal');
+            const startButton = document.getElementById('startGame');
+            
+            startButton.addEventListener('click', () => {
+                this.playerName = document.getElementById('playerName').value || 'Anônimo';
+                this.playerColor = document.getElementById('playerColor').value;
+                modal.style.display = 'none';
+                this.startGame();
+            });
+        }
+
+        setupRespawnButton() {
+            const respawnButton = document.getElementById('respawnButton');
+            respawnButton.addEventListener('click', () => {
+                this.socket.send(JSON.stringify({ type: 'respawn' })); // Envia mensagem de respawn para o servidor
+                document.getElementById('respawnContainer').style.display = 'none'; // Esconde o botão de respawn
+            });
+        }
+
+        startGame() {
             this.setupCanvas();
             this.setupWebSocket();
             this.setupControls();
+            this.gameLoop(); // Inicia o loop de jogo
         }
 
         setupCanvas() {
@@ -41,6 +129,14 @@
         setupWebSocket() {
             this.socket = new WebSocket('ws://localhost:8765');
             
+            this.socket.onopen = () => {
+                this.socket.send(JSON.stringify({
+                    type: 'init',
+                    name: this.playerName,
+                    color: this.playerColor
+                }));
+            };
+            
             this.socket.onmessage = (event) => {
                 const data = JSON.parse(event.data);
                 
@@ -48,6 +144,10 @@
                     this.playerId = data.player_id;
                     this.mapWidth = data.map_width;
                     this.mapHeight = data.map_height;
+                }
+
+                if (data.type === 'death' && data.player_id === this.playerId) {
+                    this.showRespawnButton(); // Mostra o botão de respawn
                 }
 
                 if (data.players) {
@@ -64,19 +164,45 @@
         }
 
         setupControls() {
-            this.canvas.addEventListener('mousemove', (event) => {
-                if (!this.playerId) return;
+            window.addEventListener('keydown', (event) => {
+                this.keys[event.key] = true; // Marca a tecla como pressionada
+            });
 
-                const rect = this.canvas.getBoundingClientRect();
-                const x = event.clientX - rect.left;
-                const y = event.clientY - rect.top;
+            window.addEventListener('keyup', (event) => {
+                this.keys[event.key] = false; // Marca a tecla como não pressionada
+            });
+        }
 
+        gameLoop() {
+            const player = this.players[this.playerId];
+            if (player && player.respawn_time <= 0) {
+                const speed = 5; // Velocidade de movimento
+                if (this.keys['ArrowUp'] || this.keys['w']) {
+                    player.y -= speed;
+                }
+                if (this.keys['ArrowDown'] || this.keys['s']) {
+                    player.y += speed;
+                }
+                if (this.keys['ArrowLeft'] || this.keys['a']) {
+                    player.x -= speed;
+                }
+                if (this.keys['ArrowRight'] || this.keys['d']) {
+                    player.x += speed;
+                }
+
+                // Enviar a nova posição para o servidor
                 this.socket.send(JSON.stringify({
                     type: 'move',
-                    x: (x / this.canvas.width) * this.mapWidth,
-                    y: (y / this.canvas.height) * this.mapHeight
+                    x: player.x,
+                    y: player.y
                 }));
-            });
+            }
+
+            requestAnimationFrame(() => this.gameLoop()); // Chama o loop novamente
+        }
+
+        showRespawnButton() {
+            document.getElementById('respawnContainer').style.display = 'flex'; // Mostra o botão de respawn
         }
 
         updateRanking() {
@@ -85,7 +211,7 @@
                 `<li class="mb-2">
                     <span class="font-bold">#${index + 1}</span> 
                     ${player.id === this.playerId ? '👤' : ''} 
-                    Score: ${player.score}
+                    ${player.name} - Score: ${player.score}
                 </li>`
             ).join('');
         }
@@ -94,20 +220,23 @@
             this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
 
             for (const [id, player] of Object.entries(this.players)) {
+                if (player.radius <= 0) continue; // Ignora jogadores invisíveis
+
                 const x = (player.x / this.mapWidth) * this.canvas.width;
                 const y = (player.y / this.mapHeight) * this.canvas.height;
                 const radius = (player.radius / this.mapWidth) * this.canvas.width;
 
+                // Desenhar o círculo
                 this.ctx.beginPath();
                 this.ctx.fillStyle = player.color;
                 this.ctx.arc(x, y, radius, 0, Math.PI * 2);
                 this.ctx.fill();
 
-                if (id === this.playerId) {
-                    this.ctx.strokeStyle = 'white';
-                    this.ctx.lineWidth = 3;
-                    this.ctx.stroke();
-                }
+                // Desenhar o nome do jogador
+                this.ctx.fillStyle = 'white';
+                this.ctx.textAlign = 'center';
+                this.ctx.font = '14px Arial';
+                this.ctx.fillText(player.name, x, y - radius - 5);
             }
         }
     }
