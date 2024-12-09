@@ -983,3 +983,7 @@
 2024-12-09 17:52:16,910 - INFO - Jogador asdfasf respawnou após clique
 2024-12-09 17:52:16,926 - INFO - Jogador asdfasf pronto para respawn
 2024-12-09 17:52:16,927 - INFO - Jogador asdfasf respawnou após clique
+2024-12-09 18:54:25,074 - INFO - server listening on 127.0.0.1:8765
+2024-12-09 18:54:25,074 - INFO - server listening on [::1]:8765
+2024-12-09 18:54:29,068 - INFO - connection open
+2024-12-09 18:54:29,068 - INFO - Novo jogador conectado: a (ID: 0de0129c-5943-4431-afae-20cba7125b9c)
