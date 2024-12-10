@@ -290,20 +290,29 @@ function startGame() {
         
         if (data.eliminated) {
             game.eliminated = true;
-            game.finalScore = data.finalScore;  // Guarda a pontuação final
+            game.finalScore = data.finalScore;
             return;
         }
 
         game.players = data.players;
         game.food = data.food;
         
-        const localPlayerObj = Object.values(game.players).find(
-            p => p.name === playerName && p.color === playerColor
-        );
-        
-        if (localPlayerObj && !game.localPlayer) {
-            game.localPlayer = localPlayerObj;
-            console.log("Jogador local definido:", game.localPlayer);
+        // Atualiza a referência do jogador local se ele ainda existir
+        if (game.localPlayer) {
+            const updatedLocalPlayer = game.players[game.localPlayer.id];
+            if (updatedLocalPlayer) {
+                game.localPlayer = updatedLocalPlayer;
+            }
+        } else {
+            // Primeira vez identificando o jogador local
+            const localPlayerObj = Object.values(game.players).find(
+                p => p.name === playerName && p.color === playerColor
+            );
+            
+            if (localPlayerObj) {
+                game.localPlayer = localPlayerObj;
+                console.log("Jogador local definido:", game.localPlayer);
+            }
         }
         
         game.updateRanking();
