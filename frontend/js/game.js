@@ -107,16 +107,53 @@ class Game {
         
         this.ctx.font = '24px Arial';
         this.ctx.fillText(
-            `Pontuação final: ${this.localPlayer ? this.localPlayer.score : 0}`,
+            `Pontuação final: ${this.finalScore || 0}`,
             this.canvas.width / 2,
             this.canvas.height / 2 + 50
         );
         
+        // Desenha o botão de reiniciar
+        const buttonWidth = 200;
+        const buttonHeight = 50;
+        const buttonX = this.canvas.width / 2 - buttonWidth / 2;
+        const buttonY = this.canvas.height / 2 + 100;
+        
+        this.ctx.fillStyle = '#4A5568';
+        this.ctx.fillRect(buttonX, buttonY, buttonWidth, buttonHeight);
+        
+        this.ctx.fillStyle = 'white';
+        this.ctx.font = '20px Arial';
         this.ctx.fillText(
-            'Clique para jogar novamente',
+            'Jogar Novamente',
             this.canvas.width / 2,
-            this.canvas.height / 2 + 100
+            buttonY + buttonHeight/2 + 7
         );
+
+        // Adiciona área clicável do botão se ainda não existe
+        if (!this.restartButtonArea) {
+            this.restartButtonArea = {
+                x: buttonX,
+                y: buttonY,
+                width: buttonWidth,
+                height: buttonHeight
+            };
+            
+            // Adiciona listener de clique para o canvas
+            this.canvas.addEventListener('click', (event) => {
+                if (this.eliminated) {
+                    const rect = this.canvas.getBoundingClientRect();
+                    const x = event.clientX - rect.left;
+                    const y = event.clientY - rect.top;
+                    
+                    if (x >= this.restartButtonArea.x && 
+                        x <= this.restartButtonArea.x + this.restartButtonArea.width &&
+                        y >= this.restartButtonArea.y && 
+                        y <= this.restartButtonArea.y + this.restartButtonArea.height) {
+                        location.reload();
+                    }
+                }
+            });
+        }
     }
 
     updateRanking() {
@@ -253,9 +290,7 @@ function startGame() {
         
         if (data.eliminated) {
             game.eliminated = true;
-            document.addEventListener('click', () => {
-                location.reload();
-            }, { once: true });
+            game.finalScore = data.finalScore;  // Guarda a pontuação final
             return;
         }
 

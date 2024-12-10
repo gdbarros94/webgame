@@ -93,6 +93,8 @@ async def handle_connection(websocket):
         init_data = await websocket.recv()
         player_info = json.loads(init_data)
         
+        websocket.player_id = player_id
+        
         new_player = Player(
             id=player_id,
             name=player_info['name'],
@@ -123,21 +125,19 @@ async def handle_connection(websocket):
                     # Remove jogadores marcados para remoção
                     for pid in game_state.players_to_remove:
                         if pid in game_state.players:
-                            # Notifica o jogador eliminado
+                            eliminated_player = game_state.players[pid]
+                            # Encontra o websocket do jogador eliminado
                             for client in CLIENTS:
-                                try:
-                                    client_data = await client.recv()
-                                    client_info = json.loads(client_data)
-                                    if 'id' in client_info and client_info['id'] == pid:
-                                        await client.send(json.dumps({"eliminated": True}))
-                                except:
-                                    continue
+                                if hasattr(client, 'player_id') and client.player_id == pid:
+                                    await client.send(json.dumps({
+                                        "eliminated": True,
+                                        "finalScore": eliminated_player.score
+                                    }))
                             del game_state.players[pid]
                     
                     game_state.players_to_remove.clear()
                     
                     if player_id not in game_state.players:
-                        await websocket.send(json.dumps({"eliminated": True}))
                         break
                     
                     # Envia estado atualizado para todos
