@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Agar.io Clone</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="js/game.js"></script>
+</head>
+<body class="bg-gray-900">
+    <div id="login" class="fixed inset-0 flex items-center justify-center bg-gray-900">
+        <div class="bg-gray-800 p-8 rounded-lg shadow-lg">
+            <h1 class="text-2xl text-white mb-4">Agar.io Clone</h1>
+            <input type="text" id="playerName" placeholder="Seu nome" 
+                   class="w-full p-2 mb-4 rounded bg-gray-700 text-white">
+            <input type="color" id="playerColor" 
+                   class="w-full mb-4 h-10 rounded">
+            <button onclick="startGame()" 
+                    class="w-full bg-blue-500 text-white p-2 rounded hover:bg-blue-600">
+                Jogar
+            </button>
+        </div>
+    </div>
+
+    <div id="game" class="hidden">
+        <canvas id="gameCanvas"></canvas>
+        <div class="fixed top-4 right-4 bg-gray-800 p-4 rounded-lg">
+            <h2 class="text-white text-xl mb-2">Ranking</h2>
+            <div id="ranking" class="text-white"></div>
+        </div>
+    </div>
+</body>
+</html> 
