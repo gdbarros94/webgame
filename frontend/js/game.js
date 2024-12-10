@@ -7,6 +7,13 @@ class Game {
         this.camera = { x: 0, y: 0 };
         this.localPlayer = null;
         this.eliminated = false;
+        this.controlType = 'mouse';
+        this.keyState = {
+            up: false,
+            down: false,
+            left: false,
+            right: false
+        };
         
         this.resizeCanvas();
         window.addEventListener('resize', () => this.resizeCanvas());
@@ -127,6 +134,84 @@ class Game {
             `)
             .join('');
     }
+
+    setupKeyboardControls() {
+        document.addEventListener('keydown', (event) => {
+            switch(event.key.toLowerCase()) {
+                case 'w':
+                case 'arrowup':
+                    this.keyState.up = true;
+                    break;
+                case 's':
+                case 'arrowdown':
+                    this.keyState.down = true;
+                    break;
+                case 'a':
+                case 'arrowleft':
+                    this.keyState.left = true;
+                    break;
+                case 'd':
+                case 'arrowright':
+                    this.keyState.right = true;
+                    break;
+            }
+        });
+
+        document.addEventListener('keyup', (event) => {
+            switch(event.key.toLowerCase()) {
+                case 'w':
+                case 'arrowup':
+                    this.keyState.up = false;
+                    break;
+                case 's':
+                case 'arrowdown':
+                    this.keyState.down = false;
+                    break;
+                case 'a':
+                case 'arrowleft':
+                    this.keyState.left = false;
+                    break;
+                case 'd':
+                case 'arrowright':
+                    this.keyState.right = false;
+                    break;
+            }
+        });
+    }
+
+    updatePlayerPosition() {
+        if (!this.localPlayer) return;
+
+        if (this.controlType === 'keyboard') {
+            const speed = 5;
+            let dx = 0;
+            let dy = 0;
+
+            if (this.keyState.up) dy -= speed;
+            if (this.keyState.down) dy += speed;
+            if (this.keyState.left) dx -= speed;
+            if (this.keyState.right) dx += speed;
+
+            // Normaliza o movimento diagonal
+            if (dx !== 0 && dy !== 0) {
+                const factor = 1 / Math.sqrt(2);
+                dx *= factor;
+                dy *= factor;
+            }
+
+            if (dx !== 0 || dy !== 0) {
+                this.localPlayer.x += dx;
+                this.localPlayer.y += dy;
+
+                if (ws.readyState === WebSocket.OPEN) {
+                    ws.send(JSON.stringify({
+                        x: this.localPlayer.x,
+                        y: this.localPlayer.y
+                    }));
+                }
+            }
+        }
+    }
 }
 
 let game;
@@ -135,6 +220,7 @@ let ws;
 function startGame() {
     const playerName = document.getElementById('playerName').value;
     const playerColor = document.getElementById('playerColor').value;
+    const controlType = document.querySelector('input[name="control"]:checked').value;
 
     if (!playerName) {
         alert('Por favor, insira seu nome!');
@@ -145,6 +231,13 @@ function startGame() {
     document.getElementById('game').classList.remove('hidden');
 
     game = new Game();
+    game.controlType = controlType;
+
+    if (controlType === 'keyboard') {
+        game.setupKeyboardControls();
+    } else {
+        document.addEventListener('mousemove', handleMouseMove);
+    }
     
     ws = new WebSocket('ws://localhost:8765');
     
@@ -181,8 +274,6 @@ function startGame() {
         game.updateRanking();
     };
 
-    document.addEventListener('mousemove', handleMouseMove);
-    
     gameLoop();
 }
 
@@ -214,7 +305,10 @@ function handleMouseMove(event) {
 }
 
 function gameLoop() {
-    game.updateCamera();
-    game.draw();
+    if (game) {
+        game.updatePlayerPosition();
+        game.updateCamera();
+        game.draw();
+    }
     requestAnimationFrame(gameLoop);
 } 

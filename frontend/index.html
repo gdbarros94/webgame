@@ -15,6 +15,21 @@
                    class="w-full p-2 mb-4 rounded bg-gray-700 text-white">
             <input type="color" id="playerColor" 
                    class="w-full mb-4 h-10 rounded">
+            <div class="mb-4">
+                <p class="text-white mb-2">Escolha seu controle:</p>
+                <div class="flex gap-4">
+                    <label class="flex items-center text-white">
+                        <input type="radio" name="control" value="mouse" checked 
+                               class="mr-2">
+                        Mouse
+                    </label>
+                    <label class="flex items-center text-white">
+                        <input type="radio" name="control" value="keyboard" 
+                               class="mr-2">
+                        Teclado (WASD/Setas)
+                    </label>
+                </div>
+            </div>
             <button onclick="startGame()" 
                     class="w-full bg-blue-500 text-white p-2 rounded hover:bg-blue-600">
                 Jogar
